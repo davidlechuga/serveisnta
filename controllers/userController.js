@@ -2,6 +2,7 @@ const User = require('../db/models/user.js');
 const bcryptjs = require('bcryptjs');
 const jwt = require('jsonwebtoken');
 const awsUploadImage = require('../utils/aws-upload-image');
+require("dotenv").config({ path: ".env" });
 
 function createToken(user, SECRET_KEY, expiresIn) {
 	const { id, name, username, email } = user;
@@ -52,7 +53,7 @@ async function login(input) {
 	// console.log(userFound);
 	const passwordSucess = await bcryptjs.compare(password, userFound.password);
 	if (!passwordSucess) throw new Error('Error en el email o contraseña');
-	// console.log(createToken(userFound, process.env.SECRET_KEY, "24h" ));
+	// console.log(createToken(userFound, process.env._KEY, "24h" ));
 
 	return {
 		token: createToken(userFound, process.env.SECRET_KEY, '400h')
@@ -106,10 +107,36 @@ async function deleteAvatar(ctx) {
 	}
 }
 
+async function updateUser(input, ctx) {
+	const { id } = ctx.user;
+	try {
+		if (input.currentPassword && input.newPassword) {
+			const userFound = await User.findById(id);
+			const passwordSuccess = await bcryptjs.compare(
+				input.currentPassword,
+				userFound.password
+			);
+			if (!passwordSuccess) throw new Error ("Constraseña Incorrecta")
+			const salt = await bcryptjs.genSaltSync(10);
+			const newPasswordCrypt = await bcryptjs.hash(input.newPassword, salt);
+
+			await User.findByIdAndUpdate(id, { password: newPasswordCrypt });
+
+		} else {
+			await user.findByIdAndUpdate(id, input);
+		}
+		return true;
+	} catch (error) {
+		console.log(error);
+		return false;
+	}
+}
+
 module.exports = {
 	register,
 	login,
 	getUser,
 	updateAvatar,
-	deleteAvatar
+	deleteAvatar,
+	updateUser
 };
