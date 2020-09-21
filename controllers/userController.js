@@ -2,7 +2,7 @@ const User = require('../db/models/user.js');
 const bcryptjs = require('bcryptjs');
 const jwt = require('jsonwebtoken');
 const awsUploadImage = require('../utils/aws-upload-image');
-require("dotenv").config({ path: ".env" });
+require('dotenv').config({ path: '.env' });
 
 function createToken(user, SECRET_KEY, expiresIn) {
 	const { id, name, username, email } = user;
@@ -36,7 +36,7 @@ async function register(input) {
 
 	try {
 		// creamos un nuevo documento Usuario guardando en mongoDB nuestro objeto newUser
-		const user = new User (newUser);
+		const user = new User(newUser);
 		user.save();
 		return user;
 	} catch (error) {
@@ -72,20 +72,20 @@ async function getUser(id, username) {
 async function updateAvatar(file, ctx) {
 	// console.log(file);
 	//listos para subir la imagena aws s3con await porque debvulve el promise con datos
-	const {id} = ctx.user;
+	const { id } = ctx.user;
 	const { createReadStream, mimetype } = await file;
-	const extension = mimetype.split("/")[1];
+	const extension = mimetype.split('/')[1];
 	const imageName = `avatar/${id}.${extension}`;
 	const fileData = createReadStream();
 
 	try {
 		const result = await awsUploadImage(fileData, imageName);
 		// console.log(result);
-		await User.findByIdAndUpdate(id, {avatar: result})
+		await User.findByIdAndUpdate(id, { avatar: result });
 		return {
 			status: true,
 			urlAvatar: result
-		}
+		};
 	} catch (error) {
 		return {
 			status: false,
@@ -99,7 +99,7 @@ async function updateAvatar(file, ctx) {
 async function deleteAvatar(ctx) {
 	const { id } = ctx.user;
 	try {
-		await User.findByIdAndUpdate(id, { avatar: "" });
+		await User.findByIdAndUpdate(id, { avatar: '' });
 		return true;
 	} catch (error) {
 		console.log(error);
@@ -112,18 +112,14 @@ async function updateUser(input, ctx) {
 	try {
 		if (input.currentPassword && input.newPassword) {
 			const userFound = await User.findById(id);
-			const passwordSuccess = await bcryptjs.compare(
-				input.currentPassword,
-				userFound.password
-			);
-			if (!passwordSuccess) throw new Error ("Constraseña Incorrecta")
+			const passwordSuccess = await bcryptjs.compare(input.currentPassword, userFound.password);
+			if (!passwordSuccess) throw new Error('Constraseña Incorrecta');
 			const salt = await bcryptjs.genSaltSync(10);
 			const newPasswordCrypt = await bcryptjs.hash(input.newPassword, salt);
 
 			await User.findByIdAndUpdate(id, { password: newPasswordCrypt });
-
 		} else {
-			await user.findByIdAndUpdate(id, input);
+			await User.findByIdAndUpdate(id, input);
 		}
 		return true;
 	} catch (error) {
@@ -132,11 +128,21 @@ async function updateUser(input, ctx) {
 	}
 }
 
+async function search(search) {
+	const users = await User.find({
+		name: { $regex: search, $options: 'i' }
+	});
+	return users;
+}
+
+
+
 module.exports = {
 	register,
 	login,
 	getUser,
 	updateAvatar,
 	deleteAvatar,
-	updateUser
+	updateUser,
+	search
 };
